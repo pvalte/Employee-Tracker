@@ -1,49 +1,42 @@
 const inquirer = require('inquirer');
 const mysql = require('mysql2');
 const cTable = require('console.table');
+const db = require('./db/connection');
 
-// Connect to database
-const db = mysql.createConnection(
-    {
-        host: 'localhost',
-        // Your MySQL username,
-        user: 'root',
-        // Your MySQL password
-        password: 'NEW_USER_PASSWORD',
-        database: 'employee'
-    },
-    console.log('Connected to the employee database.')
-);
+//prompt user
+function ask() { 
+    inquirer.prompt({
+        type: 'list',
+        message: 'What would you like to do?',
+        name: 'action',
+        choices: ['view all departments', 'view all roles', 'view all employees', 'add a department', 'add a role', 'add an employee', 'update an employee role']
+    })
+    .then(response => {
+        if (response.action == 'view all departments') {
+            const sql = `SELECT name AS Departments FROM department`;
+            db.query(sql, function (err, results) {
+                console.table(results);
+            });
+        }
+        if (response.action == 'view all roles') {
+            //TO DO: Replace dept id with name
+            const sql = `SELECT * FROM roles`;
+            db.query(sql, function (err, results) {
+                console.table(results);
+            });
+        }
+        if (response.action == 'view all employees') {
+            //TO DO: Replace dept id with name
+            //TO DO: Replace mnanager id with name
+            const sql = `SELECT * FROM employees`;
+            db.query(sql, function (err, results) {
+                console.table(results);
+            });
+        }
+        else {
+            console.log(response);
+        }
+    })
+};
 
-// //test inquirer
-// function ask() { 
-//     inquirer.prompt({
-//         type: 'list',
-//         message: 'What type of cheese do you like?',
-//         name: 'cheese',
-//         choices: ['Brie', 'Cheddar']
-//     })
-//     .then((answers) => {
-//         console.log(answers);
-//     })
-//     .catch((error) => {
-//         if (error.isTtyError) {
-//             // Prompt couldn't be rendered in the current environment
-//         } else {
-//             // Something else went wrong
-//         }
-//     });
-// };
-
-// ask();
-
-// //test consol table
-// console.table([
-//   {
-//     name: 'foo',
-//     age: 10
-//   }, {
-//     name: 'bar',
-//     age: 20
-//   }
-// ]);
+ask();
