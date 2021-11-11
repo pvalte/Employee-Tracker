@@ -3,7 +3,48 @@ const mysql = require('mysql2');
 const cTable = require('console.table');
 const db = require('./db/connection');
 
-//Questions
+// db.promise().query(`SELECT * FROM department`)
+//     .then(([rows, fields]) => {
+//         console.log(rows);
+//     })
+//     .catch(console.log)
+//     .then(() => db.end());
+
+const getDepts = () => {
+    return new Promise((resolve, reject) => {
+        db.query(`SELECT department.name FROM department;`, (err, res) => {
+            if (err) reject(err);
+            resolve(res);
+        });
+    });
+}
+const viewDepts = async () => {
+    const departmentArray = [];
+    const choices = await getDepts();
+    //console.log(choices);
+    for (let i = 0; i < choices.length; i++) {
+        departmentArray.push(choices[i].name);
+    }
+    console.log(departmentArray);
+}
+viewDepts();
+
+
+// const getManagers = () => {
+//     return new Promise((resolve, reject) => {
+//         db.query(`SELECT CONCAT(employee.first_name, " ", employee.last_name) AS Name 
+//         FROM employee;`, (err, res) => {
+//             if (err) reject(err);
+//             resolve(res);
+//         });
+//     });
+// }
+// const viewEmployeesNames = async () => {
+//     const choices = await getManagers();
+//     console.log(choices);
+// }
+// viewEmployeesNames();
+
 const roleQuestions = [{
     type: 'input',
     message: 'What is the title of the new role?',
@@ -59,14 +100,14 @@ const updateQuestions = [{
 
 //Functions
 function printDepartments() {
-    const sql = `SELECT name AS Departments FROM department`;
+    const sql = `SELECT * FROM department`;
     db.query(sql, function (err, results) {
         console.table(results);
     });
 };
 
 function printRoles() {
-    const sql = `SELECT roles.title, roles.salary, department.name 
+    const sql = `SELECT roles.id, roles.title, roles.salary, department.name 
             AS department
             FROM roles
             LEFT JOIN department 
@@ -78,10 +119,12 @@ function printRoles() {
 
 function printEmployees() {
     //TO DO: Replace mnanager id with name
-    const sql = `SELECT employee.first_name, employee.last_name, roles.title AS role
+    const sql = `SELECT employee.id, employee.first_name, employee.last_name, roles.title AS role, roles.salary AS salary, department.name AS department, employee.manager_id
     FROM employee
     LEFT JOIN roles 
-    ON employee.role_id = roles.id;`;
+    ON employee.role_id = roles.id
+    LEFT JOIN department 
+    ON roles.department_id = department.id;`;
 
     db.query(sql, function (err, results) {
         console.table(results);
@@ -89,7 +132,7 @@ function printEmployees() {
 };
 
 //prompt user
-function ask() {
+function init() {
     inquirer.prompt({
         type: 'list',
         message: 'What would you like to do?',
@@ -177,8 +220,9 @@ function ask() {
             else {
                 return;
             }
+            //TO DO: make queries asynchronous
             //TO DO: restart ask
         })
 };
 
-ask();
+//init();
