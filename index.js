@@ -91,15 +91,13 @@ async function printEmployees() {
         database: 'employees'
     });
     //TO DO: Replace mnanager id with name
-    const sql = `SELECT employee.id, employee.first_name, employee.last_name, roles.title AS role, roles.salary AS salary, department.name AS department, employee.manager_id, cast(NULL as varchar)
+    const sql = `SELECT employee.id, employee.first_name, employee.last_name, roles.title AS role, roles.salary AS salary, department.name AS department, CONCAT(e.first_name, ' ' ,e.last_name) AS manager
     FROM employee
-    WHERE manager_id IS NULL
-    LEFT JOIN roles 
+    INNER JOIN roles 
     ON employee.role_id = roles.id
-    LEFT JOIN department 
+    INNER JOIN department 
     ON roles.department_id = department.id
-    LEFT JOIN CONCAT(employee.first_name, " ", employee.last_name) AS manager
-    ON employee.manager_id = employee.id;`;
+    LEFT JOIN employee e on employee.manager_id = e.id;`;
     const [rows, fields] = await db.execute(sql);
     console.table(rows);
 };
@@ -179,7 +177,9 @@ async function addEmployee(response) {
         database: 'employees'
     });
     const roleId = await getRoleId(response);
+    console.log(roleId);
     const managerId = await getManagerId(response);
+    console.log(managerId);
 
     const sql = `INSERT INTO employee (first_name, last_name, roleId, managerId)
     VALUES (?,?,?,?);`;
