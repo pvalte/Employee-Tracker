@@ -4,18 +4,6 @@ const cTable = require('console.table');
 const db = require('./db/connection');
 
 
-function getRoles() {
-    const sql = `SELECT roles.title FROM roles`;
-    const [rows, fields] = db.execute(sql);
-    return rows;
-}
-
-function getManagers() {
-    const sql = `SELECT employee.first_name FROM employee`;
-    const [rows, fields] = db.execute(sql);
-    return rows;
-}
-
 const updateQuestions = [{
     //TODO: change to list of employees
     type: 'input',
@@ -74,32 +62,33 @@ function printEmployees() {
 };
 
 function addDepartment(response) {
-    const sql = `INSERT INTO department (name) VALUES (?);`;
-    const params = [response.department];
-    db.query(sql, params, (err, res) => {
-        if (err) throw err;
-        console.log('Department added.');
-        printDepartments();
-        init();
+    inquirer.prompt({
+        type: 'input',
+        message: 'What is the name of the department you would like to add?',
+        name: 'department',
     })
+        .then(response => {
+            const sql = `INSERT INTO department (name) VALUES (?);`;
+            const params = [response.department];
+            db.query(sql, params, (err, res) => {
+                if (err) throw err;
+                console.log('Department added.');
+                printDepartments();
+                init();
+            })
+        })
 };
-
-function getDeptId(response) {
-    const sql = `SELECT id FROM department WHERE name = '${response.department}';`;
-    const [rows, fields] = db.execute(sql);
-    return rows[0].id;
-}
 
 var deptArr = [];
 function getDepts() {
     const sql = `SELECT * FROM department`;
-  db.query(sql, (err, res) => {
-    if (err) throw err
-    for (var i = 0; i < res.length; i++) {
-        deptArr.push(res[i].name);
-    }
-  })
-  return deptArr;
+    db.query(sql, (err, res) => {
+        if (err) throw err
+        for (var i = 0; i < res.length; i++) {
+            deptArr.push(res[i].name);
+        }
+    })
+    return deptArr;
 }
 
 function addRole() {
@@ -134,30 +123,67 @@ function addRole() {
         })
 };
 
-function getRoleId(response) {
-    const sql = `SELECT id FROM roles WHERE title = '${response.role}';`;
-    const [rows, fields] = db.execute(sql);
-    return rows[0].id;
+var rolesArr = [];
+function getRoles() {
+    const sql = `SELECT * FROM roles`;
+    db.query(sql, (err, res) => {
+        if (err) throw err
+        for (var i = 0; i < res.length; i++) {
+            rolesArr.push(res[i].title);
+        }
+    })
+    return rolesArr;
 }
 
-function getManagerId(response) {
-    const sql = `SELECT id FROM employee WHERE first_name = '${response.manager}';`;
-    const [rows, fields] = db.execute(sql);
-    return rows[0].id;
+var managersArr = [];
+function getManagers() {
+    const sql = `SELECT * FROM employee`;
+    db.query(sql, (err, res) => {
+        if (err) throw err
+        for (var i = 0; i < res.length; i++) {
+            managersArr.push(res[i].first_name);
+        }
+    })
+    return managersArr;
 }
 
-function addEmployee(response) {
-    const roleId = getRoleId(response);
-    console.log(roleId);
-    const managerId = getManagerId(response);
-    console.log(managerId);
+function addEmployee() {
+    inquirer.prompt([{
+        type: 'input',
+        message: 'What is the first name of the new employee?',
+        name: 'first',
+        },
+        {
+            type: 'input',
+            message: 'What is the last name of the new employee?',
+            name: 'last',
+        },
+        {
+            type: 'list',
+            message: 'What is the role of the new employee?',
+            name: 'role',
+            choices: getRoles()
+        },
+        {
+            type: 'list',
+            message: 'Who is the manager of the new employee?',
+            name: 'manager',
+            choices: getManagers()
+    }])
+        .then(response => {
+            const roleId = getRoles().indexOf(response.role) + 1;
+            const managerId = getManagers().indexOf(response.manager) + 1;
 
-    const sql = `INSERT INTO employee (first_name, last_name, roleId, managerId)
-    VALUES (?,?,?,?);`;
-    const params = [response.first, response.last, roleId, managerId];
-    const [rows, fields] = db.execute(sql, params);
-    console.log('Employee added.');
-    printEmployees();
+            const sql = `INSERT INTO employee (first_name, last_name, role_id, manager_id)
+            VALUES (?,?,?,?);`;
+            const params = [response.first, response.last, roleId, managerId];
+            db.query(sql, params, (err, res) => {
+                if (err) throw err;
+                console.log('Employee added.');
+                printEmployees();
+                init();
+            })
+        })
 };
 
 
@@ -180,50 +206,13 @@ function init() {
                 printEmployees();
             }
             if (response.action == 'add a department') {
-                inquirer.prompt({
-                    type: 'input',
-                    message: 'What is the name of the department you would like to add?',
-                    name: 'department',
-                })
-                    .then(response => { addDepartment(response) })
+                addDepartment();
             }
             if (response.action == 'add a role') {
                 addRole();
             }
             if (response.action == 'add an employee') {
-                roleChoices = [];
-                for (let i = 0; i < roleArray.length; i++) {
-                    roleChoices.push(roleArray[i].title);
-                }
-
-                managerChoices = [];
-                for (let i = 0; i < managerArray.length; i++) {
-                    managerChoices.push(managerArray[i].first_name);
-                }
-
-                inquirer.prompt({
-                    type: 'input',
-                    message: 'What is the first name of the new employee?',
-                    name: 'first',
-                },
-                    {
-                        type: 'input',
-                        message: 'What is the last name of the new employee?',
-                        name: 'last',
-                    },
-                    {
-                        type: 'list',
-                        message: 'What is the role of the new employee?',
-                        name: 'role',
-                        choices: roleChoices
-                    },
-                    {
-                        type: 'list',
-                        message: 'Who is the manager of the new employee?',
-                        name: 'manager',
-                        choices: managerChoices
-                    })
-                    .then(response => { addEmployee(response) })
+                addEmployee();
             }
             // if (response.action == 'update an employee role') {
             //     //TO DO: update role for employee
@@ -244,8 +233,7 @@ function init() {
             else {
                 return;
             }
-            //TO DO: make queries asynchronous
-            //TO DO: restart ask
+            //TO DO: remove extra print tables
         })
 };
 
