@@ -1,14 +1,26 @@
 const inquirer = require('inquirer');
-const mysql = require('mysql2');
+//const mysql = require('mysql2');
 const cTable = require('console.table');
-const db = require('./db/connection');
+//const db = require('./db/connection');
+//var db = require('mysql2-promise')();
 
-// db.promise().query(`SELECT * FROM department`)
-//     .then(([rows, fields]) => {
-//         console.log(rows);
-//     })
-//     .catch(console.log)
-//     .then(() => db.end());
+async function example1 () {
+    const mysql = require('mysql2/promise'); // or require('mysql2').createConnectionPromise
+    const db = await mysql.createConnection({
+        host: 'localhost',
+        // Your MySQL username,
+        user: 'root',
+        // Your MySQL password
+        password: 'NEW_USER_PASSWORD',
+        database: 'employees'
+    },
+    console.log('Connected to the employees database.')
+    );
+    const [rows, fields] = await db.execute(`SELECT department.name FROM department;`);
+    console.log(rows);
+}
+
+example1();
 
 const getDepts = () => {
     return new Promise((resolve, reject) => {
@@ -18,17 +30,6 @@ const getDepts = () => {
         });
     });
 }
-const viewDepts = async () => {
-    const departmentArray = [];
-    const choices = await getDepts();
-    //console.log(choices);
-    for (let i = 0; i < choices.length; i++) {
-        departmentArray.push(choices[i].name);
-    }
-    console.log(departmentArray);
-}
-viewDepts();
-
 
 // const getManagers = () => {
 //     return new Promise((resolve, reject) => {
@@ -101,10 +102,14 @@ const updateQuestions = [{
 //Functions
 function printDepartments() {
     const sql = `SELECT * FROM department`;
-    db.query(sql, function (err, results) {
-        console.table(results);
+    db.query(sql).then(function (users) {
+        console.log('Hello users', users);
     });
+
 };
+
+
+//printDepartments();
 
 function printRoles() {
     const sql = `SELECT roles.id, roles.title, roles.salary, department.name 
@@ -116,6 +121,8 @@ function printRoles() {
         console.table(results);
     });
 };
+
+//printRoles();
 
 function printEmployees() {
     //TO DO: Replace mnanager id with name
@@ -170,59 +177,82 @@ function init() {
                     })
             }
             if (response.action == 'add a role') {
-                inquirer.prompt(roleQuestions)
+                deptChoices = [];
+                for (let i = 0; i < deptArray.length; i++) {
+                    deptChoices.push(deptArray[i].name);
+                }
+                inquirer.prompt([{
+                    type: 'input',
+                    message: 'What is the title of the new role?',
+                    name: 'title',
+                },
+                {
+                    type: 'input',
+                    message: 'What is the salary of the new role?',
+                    name: 'salary',
+                },
+                {
+                    name: "department",
+                    type: "list",
+                    message: "Please select a department: ",
+                    choices: deptChoices
+                }])
                     .then(response => {
-                        const sql = `INSERT INTO roles (title, salary, department_id)
-                    VALUES (?,?,?);`;
-                        const params = [response.title, response.salary, response.department_id];
-                        db.query(sql, params, (err, result) => {
-                            if (err) {
-                                console.log(err);
-                                return;
-                            }
-                            console.log('Role added.');
-                            printRoles();
+                        const sql = `SELECT id FROM department WHERE name = '${response.department}';`;
+                        db.query(sql, function (err, results) {
+                            console.log(results.id);
+                            const sql = `INSERT INTO roles (title, salary, department)
+                            VALUES (?,?,?);`;
+                            const params = [response.title, response.salary, results.id];
+                            db.query(sql, params, (err, result) => {
+                                if (err) {
+                                    console.log(err);
+                                    return;
+                                }
+                                console.log('Role added.');
+                                printRoles();
+                            });
                         });
                     })
             }
             if (response.action == 'add an employee') {
-                inquirer.prompt(employeeQuestions)
-                    .then(response => {
-                        const sql = `INSERT INTO employee (first_name, last_name, role_id, manager_id)
+                    inquirer.prompt(employeeQuestions)
+                        .then(response => {
+                            const sql = `INSERT INTO employee (first_name, last_name, role_id, manager_id)
                     VALUES (?,?,?,?);`;
-                        const params = [response.first, response.last, response.role, response.manager];
-                        db.query(sql, params, (err, result) => {
-                            if (err) {
-                                console.log(err);
-                                return;
-                            }
-                            console.log('Employee added.');
-                            printEmployees();
-                        });
-                    })
-            }
-            if (response.action == 'update an employee role') {
-                //TO DO: update role for employee
-                inquirer.prompt(updateQuestions)
-                    .then(response => {
-                        const sql = `UPDATE employees SET department_id = ? 
+                            const params = [response.first, response.last, response.role, response.manager];
+                            db.query(sql, params, (err, result) => {
+                                if (err) {
+                                    console.log(err);
+                                    return;
+                                }
+                                console.log('Employee added.');
+                                printEmployees();
+                            });
+                        })
+                }
+                if (response.action == 'update an employee role') {
+                    //TO DO: update role for employee
+                    inquirer.prompt(updateQuestions)
+                        .then(response => {
+                            const sql = `UPDATE employees SET department_id = ? 
                     WHERE id = ?`;
-                        const params = [response.employee, response.department_id];
-                        db.query(sql, params, (err, result) => {
-                            if (err) {
-                                console.log(err);
-                                return;
-                            }
-                            console.log('Updated employee role');
-                        });
-                    })
-            }
-            else {
-                return;
-            }
-            //TO DO: make queries asynchronous
-            //TO DO: restart ask
-        })
+                            const params = [response.employee, response.department_id];
+                            db.query(sql, params, (err, result) => {
+                                if (err) {
+                                    console.log(err);
+                                    return;
+                                }
+                                console.log('Updated employee role');
+                            });
+                        })
+                }
+                else {
+                    return;
+                }
+                //TO DO: make queries asynchronous
+                //TO DO: restart ask
+            })
 };
 
 //init();
