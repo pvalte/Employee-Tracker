@@ -1,43 +1,18 @@
 const inquirer = require('inquirer');
-//const mysql = require('mysql2');
+const mysql = require('mysql2');
 const cTable = require('console.table');
-//const db = require('./db/connection');
-//var db = require('mysql2-promise')();
-const mysql = require('mysql2/promise');
+const db = require('./db/connection');
 
-async function getDepts() {
-    const db = await mysql.createConnection({
-        host: 'localhost',
-        user: 'root',
-        password: 'NEW_USER_PASSWORD',
-        database: 'employees'
-    });
-    const sql = `SELECT department.name FROM department`;
-    const [rows, fields] = await db.execute(sql);
-    return rows;
-}
 
-async function getRoles() {
-    const db = await mysql.createConnection({
-        host: 'localhost',
-        user: 'root',
-        password: 'NEW_USER_PASSWORD',
-        database: 'employees'
-    });
+function getRoles() {
     const sql = `SELECT roles.title FROM roles`;
-    const [rows, fields] = await db.execute(sql);
+    const [rows, fields] = db.execute(sql);
     return rows;
 }
 
-async function getManagers() {
-    const db = await mysql.createConnection({
-        host: 'localhost',
-        user: 'root',
-        password: 'NEW_USER_PASSWORD',
-        database: 'employees'
-    });
+function getManagers() {
     const sql = `SELECT employee.first_name FROM employee`;
-    const [rows, fields] = await db.execute(sql);
+    const [rows, fields] = db.execute(sql);
     return rows;
 }
 
@@ -55,42 +30,35 @@ const updateQuestions = [{
 }]
 
 //Functions
-async function printDepartments() {
-    const db = await mysql.createConnection({
-        host: 'localhost',
-        user: 'root',
-        password: 'NEW_USER_PASSWORD',
-        database: 'employees'
-    });
+function printDepartments() {
     const sql = `SELECT * FROM department`;
-    const [rows, fields] = await db.execute(sql);
-    console.table(rows);
+    db.query(sql, (err, res) => {
+        if (err) throw err;
+        console.table(res);
+        init();
+    })
 };
 
-async function printRoles() {
-    const db = await mysql.createConnection({
-        host: 'localhost',
-        user: 'root',
-        password: 'NEW_USER_PASSWORD',
-        database: 'employees'
-    });
+function printRoles() {
     const sql = `SELECT roles.id, roles.title, roles.salary, department.name 
             AS department
             FROM roles
             LEFT JOIN department 
             ON roles.department_id = department.id;`;
-    const [rows, fields] = await db.execute(sql);
-    console.table(rows);
+    db.query(sql, (err, res) => {
+        if (err) throw err;
+        console.table(res);
+        init();
+    })
 };
 
-async function printEmployees() {
-    const db = await mysql.createConnection({
+function printEmployees() {
+    const db = mysql.createConnection({
         host: 'localhost',
         user: 'root',
         password: 'NEW_USER_PASSWORD',
         database: 'employees'
     });
-    //TO DO: Replace mnanager id with name
     const sql = `SELECT employee.id, employee.first_name, employee.last_name, roles.title AS role, roles.salary AS salary, department.name AS department, CONCAT(e.first_name, ' ' ,e.last_name) AS manager
     FROM employee
     INNER JOIN roles 
@@ -98,111 +66,103 @@ async function printEmployees() {
     INNER JOIN department 
     ON roles.department_id = department.id
     LEFT JOIN employee e on employee.manager_id = e.id;`;
-    const [rows, fields] = await db.execute(sql);
-    console.table(rows);
+    db.query(sql, (err, res) => {
+        if (err) throw err;
+        console.table(res);
+        init();
+    })
 };
 
-async function addDepartment(response) {
-    const db = await mysql.createConnection({
-        host: 'localhost',
-        user: 'root',
-        password: 'NEW_USER_PASSWORD',
-        database: 'employees'
-    });
+function addDepartment(response) {
     const sql = `INSERT INTO department (name) VALUES (?);`;
     const params = [response.department];
-    const [rows, fields] = await db.execute(sql, params);
-    console.log('Department added.');
-    printDepartments();
+    db.query(sql, params, (err, res) => {
+        if (err) throw err;
+        console.log('Department added.');
+        printDepartments();
+        init();
+    })
 };
 
-async function getDeptId(response) {
-    const db = await mysql.createConnection({
-        host: 'localhost',
-        user: 'root',
-        password: 'NEW_USER_PASSWORD',
-        database: 'employees'
-    });
+function getDeptId(response) {
     const sql = `SELECT id FROM department WHERE name = '${response.department}';`;
-    const [rows, fields] = await db.execute(sql);
+    const [rows, fields] = db.execute(sql);
     return rows[0].id;
 }
 
-async function addRole(response) {
-    const db = await mysql.createConnection({
-        host: 'localhost',
-        user: 'root',
-        password: 'NEW_USER_PASSWORD',
-        database: 'employees'
-    });
-    const deptId = await getDeptId(response);
+var deptArr = [];
+function getDepts() {
+    const sql = `SELECT * FROM department`;
+  db.query(sql, (err, res) => {
+    if (err) throw err
+    for (var i = 0; i < res.length; i++) {
+        deptArr.push(res[i].name);
+    }
+  })
+  return deptArr;
+}
 
-    const sql = `INSERT INTO roles (title, salary, department_id)
-        VALUES (?,?,?);`;
-    const params = [response.title, response.salary, deptId];
-    const [rows, fields] = await db.execute(sql, params);
-    console.log('Role added.');
-    printRoles();
+function addRole() {
+    inquirer.prompt([{
+        type: 'input',
+        message: 'What is the title of the new role?',
+        name: 'title',
+    },
+    {
+        type: 'input',
+        message: 'What is the salary of the new role?',
+        name: 'salary',
+    },
+    {
+        name: "department",
+        type: "list",
+        message: "Please select a department: ",
+        choices: getDepts()
+    }])
+        .then(response => {
+            const deptId = getDepts().indexOf(response.department) + 1;
+
+            const sql = `INSERT INTO roles (title, salary, department_id)
+            VALUES (?,?,?);`;
+            const params = [response.title, response.salary, deptId];
+            db.query(sql, params, (err, res) => {
+                if (err) throw err;
+                console.log('Role added.');
+                printRoles();
+                init();
+            })
+        })
 };
 
-async function getRoleId(response) {
-    const db = await mysql.createConnection({
-        host: 'localhost',
-        user: 'root',
-        password: 'NEW_USER_PASSWORD',
-        database: 'employees'
-    });
+function getRoleId(response) {
     const sql = `SELECT id FROM roles WHERE title = '${response.role}';`;
-    const [rows, fields] = await db.execute(sql);
+    const [rows, fields] = db.execute(sql);
     return rows[0].id;
 }
 
-async function getManagerId(response) {
-    const db = await mysql.createConnection({
-        host: 'localhost',
-        user: 'root',
-        password: 'NEW_USER_PASSWORD',
-        database: 'employees'
-    });
+function getManagerId(response) {
     const sql = `SELECT id FROM employee WHERE first_name = '${response.manager}';`;
-    const [rows, fields] = await db.execute(sql);
+    const [rows, fields] = db.execute(sql);
     return rows[0].id;
 }
 
-async function addEmployee(response) {
-    const db = await mysql.createConnection({
-        host: 'localhost',
-        user: 'root',
-        password: 'NEW_USER_PASSWORD',
-        database: 'employees'
-    });
-    const roleId = await getRoleId(response);
+function addEmployee(response) {
+    const roleId = getRoleId(response);
     console.log(roleId);
-    const managerId = await getManagerId(response);
+    const managerId = getManagerId(response);
     console.log(managerId);
 
     const sql = `INSERT INTO employee (first_name, last_name, roleId, managerId)
     VALUES (?,?,?,?);`;
     const params = [response.first, response.last, roleId, managerId];
-    const [rows, fields] = await db.execute(sql, params);
+    const [rows, fields] = db.execute(sql, params);
     console.log('Employee added.');
     printEmployees();
 };
 
 
 //prompt user
-async function init() {
-    const db = await mysql.createConnection({
-        host: 'localhost',
-        user: 'root',
-        password: 'NEW_USER_PASSWORD',
-        database: 'employees'
-    },
-        console.log('Connected to the employees database.')
-    );
-    const deptArray = await getDepts();
-    const roleArray = await getDepts();
-    const managerArray = await getDepts();
+function init() {
     inquirer.prompt({
         type: 'list',
         message: 'What would you like to do?',
@@ -225,30 +185,10 @@ async function init() {
                     message: 'What is the name of the department you would like to add?',
                     name: 'department',
                 })
-                .then(response => {addDepartment(response)})
+                    .then(response => { addDepartment(response) })
             }
             if (response.action == 'add a role') {
-                deptChoices = [];
-                for (let i = 0; i < deptArray.length; i++) {
-                    deptChoices.push(deptArray[i].name);
-                }
-                inquirer.prompt([{
-                    type: 'input',
-                    message: 'What is the title of the new role?',
-                    name: 'title',
-                },
-                {
-                    type: 'input',
-                    message: 'What is the salary of the new role?',
-                    name: 'salary',
-                },
-                {
-                    name: "department",
-                    type: "list",
-                    message: "Please select a department: ",
-                    choices: deptChoices
-                }])
-                .then(response => {addRole(response)})
+                addRole();
             }
             if (response.action == 'add an employee') {
                 roleChoices = [];
@@ -260,30 +200,30 @@ async function init() {
                 for (let i = 0; i < managerArray.length; i++) {
                     managerChoices.push(managerArray[i].first_name);
                 }
-                
+
                 inquirer.prompt({
                     type: 'input',
                     message: 'What is the first name of the new employee?',
                     name: 'first',
                 },
-                {
-                    type: 'input',
-                    message: 'What is the last name of the new employee?',
-                    name: 'last',
-                },
-                {
-                    type: 'list',
-                    message: 'What is the role of the new employee?',
-                    name: 'role',
-                    choices: roleChoices
-                },
-                {
-                    type: 'list',
-                    message: 'Who is the manager of the new employee?',
-                    name: 'manager',
-                    choices: managerChoices
-                })
-                    .then(response => {addEmployee(response)})
+                    {
+                        type: 'input',
+                        message: 'What is the last name of the new employee?',
+                        name: 'last',
+                    },
+                    {
+                        type: 'list',
+                        message: 'What is the role of the new employee?',
+                        name: 'role',
+                        choices: roleChoices
+                    },
+                    {
+                        type: 'list',
+                        message: 'Who is the manager of the new employee?',
+                        name: 'manager',
+                        choices: managerChoices
+                    })
+                    .then(response => { addEmployee(response) })
             }
             // if (response.action == 'update an employee role') {
             //     //TO DO: update role for employee
