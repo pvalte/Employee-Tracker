@@ -2,10 +2,9 @@ const inquirer = require('inquirer');
 const mysql = require('mysql2');
 const cTable = require('console.table');
 const db = require('./db/connection');
+const { getDepts, getRoles, getEmployees } = require('./utilities/getLists');
 
-//Functions
-function printDepartments() {
-    const sql = `SELECT * FROM department`;
+function printTable(sql) {
     db.query(sql, (err, res) => {
         if (err) throw err;
         console.table(res);
@@ -13,41 +12,7 @@ function printDepartments() {
     })
 };
 
-function printRoles() {
-    const sql = `SELECT roles.id, roles.title, roles.salary, department.name 
-            AS department
-            FROM roles
-            LEFT JOIN department 
-            ON roles.department_id = department.id;`;
-    db.query(sql, (err, res) => {
-        if (err) throw err;
-        console.table(res);
-        init();
-    })
-};
-
-function printEmployees() {
-    const db = mysql.createConnection({
-        host: 'localhost',
-        user: 'root',
-        password: 'NEW_USER_PASSWORD',
-        database: 'employees'
-    });
-    const sql = `SELECT employee.id, employee.first_name, employee.last_name, roles.title AS role, roles.salary AS salary, department.name AS department, CONCAT(e.first_name, ' ' ,e.last_name) AS manager
-    FROM employee
-    INNER JOIN roles 
-    ON employee.role_id = roles.id
-    INNER JOIN department 
-    ON roles.department_id = department.id
-    LEFT JOIN employee e on employee.manager_id = e.id;`;
-    db.query(sql, (err, res) => {
-        if (err) throw err;
-        console.table(res);
-        init();
-    })
-};
-
-function addDepartment(response) {
+function addDepartment() {
     inquirer.prompt({
         type: 'input',
         message: 'What is the name of the department you would like to add?',
@@ -63,18 +28,6 @@ function addDepartment(response) {
             })
         })
 };
-
-var deptArr = [];
-function getDepts() {
-    const sql = `SELECT * FROM department`;
-    db.query(sql, (err, res) => {
-        if (err) throw err
-        for (var i = 0; i < res.length; i++) {
-            deptArr.push(res[i].name);
-        }
-    })
-    return deptArr;
-}
 
 function addRole() {
     inquirer.prompt([{
@@ -106,30 +59,6 @@ function addRole() {
             })
         })
 };
-
-var rolesArr = [];
-function getRoles() {
-    const sql = `SELECT * FROM roles`;
-    db.query(sql, (err, res) => {
-        if (err) throw err
-        for (var i = 0; i < res.length; i++) {
-            rolesArr.push(res[i].title);
-        }
-    })
-    return rolesArr;
-}
-
-var employeeArr = [];
-function getEmployees() {
-    const sql = `SELECT * FROM employee`;
-    db.query(sql, (err, res) => {
-        if (err) throw err
-        for (var i = 0; i < res.length; i++) {
-            employeeArr.push(res[i].first_name);
-        }
-    })
-    return employeeArr;
-}
 
 function addEmployee() {
     inquirer.prompt([{
@@ -169,25 +98,8 @@ function addEmployee() {
         })
 };
 
-var employeesArr = [];
-function getEmployees() {
-    const sql = `SELECT * FROM employee`;
-    db.query(sql, (err, res) => {
-        if (err) throw err
-        for (var i = 0; i < res.length; i++) {
-            employeesArr.push(res[i].first_name);
-        }
-    })
-    return employeesArr;
-}
-
 function updateEmployee() {
     inquirer.prompt([
-        {
-            type: 'input',
-            message: 'but why tho?',
-            name: 'why',
-        },
         {
             type: 'list',
             message: 'What is the name of the employee?',
@@ -214,7 +126,6 @@ function updateEmployee() {
     })
 }
 
-
 //prompt user
 function init() {
     inquirer.prompt({
@@ -225,13 +136,26 @@ function init() {
     })
         .then(response => {
             if (response.action == 'view all departments') {
-                printDepartments();
+                const sql = `SELECT * FROM department`;
+                printTable(sql);
             }
             if (response.action == 'view all roles') {
-                printRoles();
+                const sql = `SELECT roles.id, roles.title, roles.salary, department.name 
+                AS department
+                FROM roles
+                LEFT JOIN department 
+                ON roles.department_id = department.id;`;
+                printTable(sql);
             }
             if (response.action == 'view all employees') {
-                printEmployees();
+                const sql = `SELECT employee.id, employee.first_name, employee.last_name, roles.title AS role, roles.salary AS salary, department.name AS department, CONCAT(e.first_name, ' ' ,e.last_name) AS manager
+                FROM employee
+                INNER JOIN roles 
+                ON employee.role_id = roles.id
+                INNER JOIN department 
+                ON roles.department_id = department.id
+                LEFT JOIN employee e on employee.manager_id = e.id;`;
+                printTable(sql);
             }
             if (response.action == 'add a department') {
                 addDepartment();
