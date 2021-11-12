@@ -15,8 +15,6 @@ Screenshot of Command Line: ![image](https://user-images.githubusercontent.com/8
 * [Installation](#Installation)
 * [Usage](#Usage)
 * [Contributing](#Contributing)
-* [Tests](#Tests)
-* [License](#License)
 * [Questions](#Questions)
 
 ## Installation
