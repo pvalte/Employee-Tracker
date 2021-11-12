@@ -3,20 +3,6 @@ const mysql = require('mysql2');
 const cTable = require('console.table');
 const db = require('./db/connection');
 
-
-const updateQuestions = [{
-    //TODO: change to list of employees
-    type: 'input',
-    message: 'What is the name of the employee?',
-    name: 'employee',
-},
-{
-    //TODO: change to list of depts
-    type: 'input',
-    message: 'What is the name of the department?',
-    name: 'department_id',
-}]
-
 //Functions
 function printDepartments() {
     const sql = `SELECT * FROM department`;
@@ -73,7 +59,6 @@ function addDepartment(response) {
             db.query(sql, params, (err, res) => {
                 if (err) throw err;
                 console.log('Department added.');
-                printDepartments();
                 init();
             })
         })
@@ -117,7 +102,6 @@ function addRole() {
             db.query(sql, params, (err, res) => {
                 if (err) throw err;
                 console.log('Role added.');
-                printRoles();
                 init();
             })
         })
@@ -135,16 +119,16 @@ function getRoles() {
     return rolesArr;
 }
 
-var managersArr = [];
-function getManagers() {
+var employeeArr = [];
+function getEmployees() {
     const sql = `SELECT * FROM employee`;
     db.query(sql, (err, res) => {
         if (err) throw err
         for (var i = 0; i < res.length; i++) {
-            managersArr.push(res[i].first_name);
+            employeeArr.push(res[i].first_name);
         }
     })
-    return managersArr;
+    return employeeArr;
 }
 
 function addEmployee() {
@@ -168,11 +152,11 @@ function addEmployee() {
             type: 'list',
             message: 'Who is the manager of the new employee?',
             name: 'manager',
-            choices: getManagers()
+            choices: getEmployees()
     }])
         .then(response => {
             const roleId = getRoles().indexOf(response.role) + 1;
-            const managerId = getManagers().indexOf(response.manager) + 1;
+            const managerId = getEmployees().indexOf(response.manager) + 1;
 
             const sql = `INSERT INTO employee (first_name, last_name, role_id, manager_id)
             VALUES (?,?,?,?);`;
@@ -180,11 +164,55 @@ function addEmployee() {
             db.query(sql, params, (err, res) => {
                 if (err) throw err;
                 console.log('Employee added.');
-                printEmployees();
                 init();
             })
         })
 };
+
+var employeesArr = [];
+function getEmployees() {
+    const sql = `SELECT * FROM employee`;
+    db.query(sql, (err, res) => {
+        if (err) throw err
+        for (var i = 0; i < res.length; i++) {
+            employeesArr.push(res[i].first_name);
+        }
+    })
+    return employeesArr;
+}
+
+function updateEmployee() {
+    inquirer.prompt([
+        {
+            type: 'input',
+            message: 'but why tho?',
+            name: 'why',
+        },
+        {
+            type: 'list',
+            message: 'What is the name of the employee?',
+            name: 'employee',
+            choices: getEmployees()
+        },
+        {
+            type: 'list',
+            message: 'What is the name of the new role?',
+            name: 'role',
+            choices: getRoles()
+        }
+    ]).then(response => {
+        const employeeId = getEmployees().indexOf(response.employee) + 1;
+        const roleId = getRoles().indexOf(response.role) + 1;
+
+        const sql = `UPDATE employee SET role_id = ? WHERE id = ?`;
+        const params = [roleId, employeeId];
+        db.query(sql, params, (err, result) => {
+            if (err) throw err;
+            console.log('Updated employee role');
+            init();
+        });
+    })
+}
 
 
 //prompt user
@@ -214,26 +242,12 @@ function init() {
             if (response.action == 'add an employee') {
                 addEmployee();
             }
-            // if (response.action == 'update an employee role') {
-            //     //TO DO: update role for employee
-            //     inquirer.prompt(updateQuestions)
-            //         .then(response => {
-            //             const sql = `UPDATE employees SET department_id = ? 
-            //         WHERE id = ?`;
-            //             const params = [response.employee, response.department_id];
-            //             db.query(sql, params, (err, result) => {
-            //                 if (err) {
-            //                     console.log(err);
-            //                     return;
-            //                 }
-            //                 console.log('Updated employee role');
-            //             });
-            //         })
-            // }
+            if (response.action == 'update an employee role') {
+                updateEmployee();
+            }
             else {
                 return;
             }
-            //TO DO: remove extra print tables
         })
 };
 
